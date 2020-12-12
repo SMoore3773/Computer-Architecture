@@ -8,6 +8,9 @@ PRN = 0b01000111
 MUL = 0b10100010
 PUSH = 0b01000101
 POP = 0b01000110
+CALL = 0b01010000
+RET = 0b00010001
+ADD = 0b10100000
 
 
 class CPU:
@@ -21,6 +24,7 @@ class CPU:
         self.ram = [0] * 256
         self.halted = False
         self.sp = self.registers[7]
+
     def ram_read(self, address):
         return self.ram[address]
 
@@ -65,8 +69,8 @@ class CPU:
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
 
-        if op == "ADD":
-            self.reg[reg_a] += self.reg[reg_b]
+        if op == ADD:
+            self.registers[reg_a] += self.registers[reg_b]
         elif op == MUL:
             self.registers[reg_a] *= self.registers[reg_b]
             self.pc += 3
@@ -102,6 +106,7 @@ class CPU:
             self.execute_instr(instr_to_execute, operand_a, operand_b)
 
     def execute_instr(self, instruction, operand_a, operand_b):
+        # print('pc:', self.pc, 'sp:', self.sp, 'isnt:', instruction, 'A:', operand_a, 'B:', operand_b)
         if instruction == HLT:
             self.halted = True
             self.pc += 1
@@ -109,6 +114,10 @@ class CPU:
         elif instruction == PRN:
             print(self.registers[operand_a])
             self.pc += 2
+
+        elif instruction == ADD:
+            self.registers[operand_a] += self.registers[operand_b]
+            self.pc += 3
 
         elif instruction == LDI:
             self.registers[operand_a] = operand_b
@@ -120,14 +129,28 @@ class CPU:
             self.pc += 3
 
         elif instruction == PUSH:
+            # decrement stack pointer
             self.sp -= 1
-            self.ram[self.sp] = self.registers[operand_a]
+            # store the operand in the stack
+            self.ram_write(self.registers[operand_a], self.sp)
+            # self.ram[self.sp] = self.registers[operand_a]
             self.pc += 2
 
         elif instruction == POP:
-            self.registers[operand_a] = self.ram[self.sp]
+            self.registers[operand_a] = self.ram_read(self.sp)
+            # self.registers[operand_a] = self.ram[self.sp]
             self.sp += 1
             self.pc += 2
+
+        elif instruction == CALL:
+            self.sp -= 1
+            self.ram_write(self.pc + 2, self.sp)
+            self.pc = self.registers[operand_a]
+
+        elif instruction == RET:
+            # val = self.ram[self.sp]
+            self.pc = self.ram_read(self.sp)
+            self.sp += 1
 
         else:
             print("invalid instruction")
